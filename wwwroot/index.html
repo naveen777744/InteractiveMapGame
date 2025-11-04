@@ -86,6 +86,12 @@
             overflow-y: auto;
         }
 
+        .player-stats {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
 
         .toolbar {
             display: flex;
@@ -93,6 +99,11 @@
             margin-bottom: 15px;
         }
 
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
 
         .object-details {
             background: rgba(255,255,255,0.1);
@@ -118,6 +129,11 @@
             line-height: 1.5;
         }
 
+        .interaction-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
 
         .btn {
             padding: 8px 16px;
@@ -369,9 +385,33 @@
             <div class="toolbar">
                 <button class="btn btn-primary" id="toggleMarkersBtn" onclick="toggleMarkers()">Hide Markers</button>
             </div>
+            <div class="player-stats">
+                <h3>Player Stats</h3>
+                <div class="stat-item">
+                    <span>Level:</span>
+                    <span id="playerLevel">1</span>
+                </div>
+                <div class="stat-item">
+                    <span>Experience:</span>
+                    <span id="playerExp">0</span>
+                </div>
+                <div class="stat-item">
+                    <span>Objects Discovered:</span>
+                    <span id="objectsDiscovered">0</span>
+                </div>
+                <div class="stat-item">
+                    <span>Total Interactions:</span>
+                    <span id="totalInteractions">0</span>
+                </div>
+            </div>
+
             <div class="object-details" id="objectDetails">
                 <div class="object-name" id="objectName"></div>
                 <div class="object-description" id="objectDescription"></div>
+                
+                <div class="interaction-buttons">
+                    <button class="btn btn-primary" onclick="generateContent('description')">Get Description</button>
+                </div>
 
                 <div class="llm-content" id="llmContent">
                     <div class="content-type-tabs">
@@ -411,11 +451,19 @@
         let mapObjects = [];
         let selectedObject = null;
         let playerId = generatePlayerId();
+        let playerStats = {
+            level: 1,
+            experience: 0,
+            discovered: 0,
+            interactions: 0
+        };
 
         // Initialize the game
         async function initGame() {
             await loadMapObjects();
+            await loadPlayerProgress();
             renderMap();
+            updatePlayerStats();
         }
 
         // Generate unique player ID
@@ -434,6 +482,20 @@
             }
         }
 
+        // Load player progress
+        async function loadPlayerProgress() {
+            // In a real implementation, this would load from the database
+            // For now, we'll use localStorage
+            const saved = localStorage.getItem('playerProgress');
+            if (saved) {
+                playerStats = JSON.parse(saved);
+            }
+        }
+
+        // Save player progress
+        function savePlayerProgress() {
+            localStorage.setItem('playerProgress', JSON.stringify(playerStats));
+        }
 
         // Render the map
         function renderMap() {
@@ -491,18 +553,9 @@
 
         // Select an object
         function selectObject(obj) {
-            // Clear previous description content when selecting new object
-            const llmContent = document.getElementById('llmContent');
-            llmContent.classList.remove('active');
-            const contentDisplay = document.getElementById('contentDisplay');
-            contentDisplay.textContent = '';
-            
             selectedObject = obj;
             showObjectDetails(obj);
             logInteraction(obj.id, 'click');
-            
-            // Automatically generate description when object is selected
-            generateContent('description');
         }
 
         // Expose data/functions for module script (3D placement)
@@ -517,12 +570,6 @@
 
             name.textContent = obj.name;
             description.textContent = obj.description || 'No description available.';
-            
-            // Clear the LLM content display when showing new object details
-            const llmContent = document.getElementById('llmContent');
-            llmContent.classList.remove('active');
-            const contentDisplay = document.getElementById('contentDisplay');
-            contentDisplay.textContent = '';
             
             details.classList.add('active');
         }
@@ -547,56 +594,22 @@
                 });
 
                 if (!response.ok) {
-                    // Try to extract error message from response
-                    let errorMessage = 'Failed to generate content';
-                    try {
-                        // Clone the response so we can read it multiple times if needed
-                        const responseText = await response.text();
-                        if (responseText) {
-                            try {
-                                const errorData = JSON.parse(responseText);
-                                if (errorData && typeof errorData === 'object') {
-                                    // Handle different error response formats
-                                    if (errorData.error) {
-                                        // errorData.error can be a string or an object with a message property
-                                        if (typeof errorData.error === 'string') {
-                                            errorMessage = errorData.error;
-                                        } else if (errorData.error.message) {
-                                            errorMessage = errorData.error.message;
-                                        } else {
-                                            errorMessage = String(errorData.error);
-                                        }
-                                    } else if (errorData.message) {
-                                        errorMessage = errorData.message;
-                                    }
-                                } else if (typeof errorData === 'string') {
-                                    errorMessage = errorData;
-                                }
-                            } catch (jsonError) {
-                                // If JSON parsing fails, use the raw text
-                                errorMessage = responseText || errorMessage;
-                            }
-                        }
-                    } catch (readError) {
-                        console.error('Error reading error response:', readError);
-                        errorMessage = `HTTP ${response.status}: ${response.statusText}`;
-                    }
-                    console.error('API Error:', {
-                        status: response.status,
-                        statusText: response.statusText,
-                        message: errorMessage
-                    });
-                    throw new Error(errorMessage);
+                    throw new Error('Failed to generate content');
                 }
 
                 const data = await response.json();
                 displayGeneratedContent(data.content, contentType);
                 
+                // Update player stats
+                playerStats.interactions++;
+                playerStats.experience += 10;
+                updatePlayerStats();
+                savePlayerProgress();
+                
                 showNotification('Content generated successfully!', 'success');
             } catch (error) {
                 console.error('Error generating content:', error);
-                const errorMsg = error.message || 'Error generating content';
-                showNotification(errorMsg, 'error');
+                showNotification('Error generating content', 'error');
             } finally {
                 showLoading(false);
             }
@@ -669,6 +682,13 @@
             }
         }
 
+        // Update player stats display
+        function updatePlayerStats() {
+            document.getElementById('playerLevel').textContent = playerStats.level;
+            document.getElementById('playerExp').textContent = playerStats.experience;
+            document.getElementById('objectsDiscovered').textContent = playerStats.discovered;
+            document.getElementById('totalInteractions').textContent = playerStats.interactions;
+        }
 
         // Close video
         function closeVideo() {
@@ -726,6 +746,12 @@
                 
                 // Clear the input
                 chatInput.value = '';
+                
+                // Update player stats
+                playerStats.interactions++;
+                playerStats.experience += 5;
+                updatePlayerStats();
+                savePlayerProgress();
                 
                 showNotification('Map guide responded!', 'success');
             } catch (error) {

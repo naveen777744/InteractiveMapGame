@@ -61,8 +61,8 @@ namespace InteractiveMapGame.Data
                 entity.Property(e => e.PlayerId).IsRequired().HasMaxLength(64);
                 entity.Property(e => e.InteractionType).IsRequired().HasMaxLength(100);
                 entity.Property(e => e.InteractionData).HasMaxLength(1000);
-                entity.Property(e => e.LLMPrompt).HasColumnType("nvarchar(max)");
-                entity.Property(e => e.LLMResponse).HasColumnType("nvarchar(max)");
+                entity.Property(e => e.LLMPrompt).HasMaxLength(2000);
+                entity.Property(e => e.LLMResponse).HasMaxLength(2000);
                 
                 entity.HasIndex(e => e.PlayerId);
                 entity.HasIndex(e => e.MapObjectId);
