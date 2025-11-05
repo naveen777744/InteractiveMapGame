@@ -27,9 +27,7 @@ namespace InteractiveMapGame.Models
         
         // LLM interaction tracking
         public bool UsedLLM { get; set; } = false;
-        [StringLength(2000)]
         public string? LLMPrompt { get; set; }
-        [StringLength(2000)]
         public string? LLMResponse { get; set; }
         public int? LLMTokens { get; set; }
     }

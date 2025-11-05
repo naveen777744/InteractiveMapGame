@@ -92,17 +92,81 @@ namespace InteractiveMapGame.Controllers
                 if (!resp.IsSuccessStatusCode)
                 {
                     var errText = await resp.Content.ReadAsStringAsync();
-                    return StatusCode((int)resp.StatusCode, string.IsNullOrWhiteSpace(errText) ? "OpenAI request failed" : errText);
+                    var errorMessage = string.IsNullOrWhiteSpace(errText) 
+                        ? $"OpenAI API request failed with status {resp.StatusCode}: {resp.ReasonPhrase}"
+                        : errText;
+                    
+                    // Try to parse JSON error response for better error message
+                    try
+                    {
+                        using var errorDoc = JsonDocument.Parse(errText);
+                        var errorRoot = errorDoc.RootElement;
+                        if (errorRoot.TryGetProperty("error", out var errorObj))
+                        {
+                            if (errorObj.TryGetProperty("message", out var message))
+                            {
+                                errorMessage = message.GetString() ?? errorMessage;
+                            }
+                            else if (errorObj.TryGetProperty("type", out var type))
+                            {
+                                errorMessage = $"{type.GetString()}: {errorMessage}";
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // If JSON parsing fails, use the raw error text
+                    }
+                    
+                    return StatusCode((int)resp.StatusCode, new { error = errorMessage, statusCode = (int)resp.StatusCode });
                 }
 
-                using var stream = await resp.Content.ReadAsStreamAsync();
-                using var doc = await JsonDocument.ParseAsync(stream);
-                var root = doc.RootElement;
-                var content = root
-                    .GetProperty("choices")[0]
-                    .GetProperty("message")
-                    .GetProperty("content")
-                    .GetString() ?? string.Empty;
+                string content;
+                JsonElement root;
+                try
+                {
+                    using var stream = await resp.Content.ReadAsStreamAsync();
+                    using var doc = await JsonDocument.ParseAsync(stream);
+                    root = doc.RootElement;
+                    
+                    // Validate response structure
+                    if (!root.TryGetProperty("choices", out var choices) || choices.GetArrayLength() == 0)
+                    {
+                        var errorMsg = "Invalid response from OpenAI API: missing or empty choices array";
+                        return StatusCode(500, new { error = errorMsg, statusCode = 500 });
+                    }
+                    
+                    var firstChoice = choices[0];
+                    if (!firstChoice.TryGetProperty("message", out var message))
+                    {
+                        var errorMsg = "Invalid response from OpenAI API: missing message property";
+                        return StatusCode(500, new { error = errorMsg, statusCode = 500 });
+                    }
+                    
+                    if (!message.TryGetProperty("content", out var contentElement))
+                    {
+                        var errorMsg = "Invalid response from OpenAI API: missing content property";
+                        return StatusCode(500, new { error = errorMsg, statusCode = 500 });
+                    }
+                    
+                    content = contentElement.GetString() ?? string.Empty;
+                    
+                    if (string.IsNullOrWhiteSpace(content))
+                    {
+                        var errorMsg = "OpenAI API returned empty content";
+                        return StatusCode(500, new { error = errorMsg, statusCode = 500 });
+                    }
+                }
+                catch (JsonException jsonEx)
+                {
+                    var errorMsg = $"Failed to parse OpenAI API response as JSON: {jsonEx.Message}";
+                    return StatusCode(500, new { error = errorMsg, statusCode = 500 });
+                }
+                catch (Exception parseEx)
+                {
+                    var errorMsg = $"Unexpected error parsing OpenAI API response: {parseEx.Message}";
+                    return StatusCode(500, new { error = errorMsg, statusCode = 500 });
+                }
 
                 // If this is a description request, save it to the database for future use
                 if (request.ContentType.ToLower() == "description")
@@ -113,6 +177,10 @@ namespace InteractiveMapGame.Controllers
                 }
 
                 // Log the LLM interaction
+                // Truncate LLMResponse to fit database column (2000 chars max)
+                var truncatedResponse = content.Length > 2000 ? content.Substring(0, 1997) + "..." : content;
+                var truncatedPrompt = userPrompt?.Length > 2000 ? userPrompt.Substring(0, 1997) + "..." : userPrompt;
+                
                 var interaction = new InteractionLog
                 {
                     PlayerId = request.PlayerId,
@@ -121,21 +189,31 @@ namespace InteractiveMapGame.Controllers
                     InteractionData = JsonSerializer.Serialize(new { ContentType = request.ContentType, SpecificRequest = request.SpecificRequest }),
                     WasSuccessful = true,
                     UsedLLM = true,
-                    LLMPrompt = userPrompt,
-                    LLMResponse = content,
+                    LLMPrompt = truncatedPrompt,
+                    LLMResponse = truncatedResponse,
                     LLMTokens = root.TryGetProperty("usage", out var usage) ? 
                         (usage.TryGetProperty("total_tokens", out var tokens) ? tokens.GetInt32() : null) : null,
                     Timestamp = DateTime.UtcNow
                 };
 
                 _context.InteractionLogs.Add(interaction);
-                await _context.SaveChangesAsync();
+                try
+                {
+                    await _context.SaveChangesAsync();
+                }
+                catch (DbUpdateException ex)
+                {
+                    // Log the error but don't fail the request - the content was already generated successfully
+                    // The user should still get their description even if logging fails
+                    Console.Error.WriteLine($"Failed to save interaction log: {ex.Message}");
+                }
 
                 return Ok(new LLMResponse(content, request.ContentType));
             }
             catch (Exception ex)
             {
-                return StatusCode(500, $"Error calling OpenAI API: {ex.Message}");
+                var errorMsg = $"Error calling OpenAI API: {ex.Message}";
+                return StatusCode(500, new { error = errorMsg, statusCode = 500, exception = ex.GetType().Name });
             }
         }
 
