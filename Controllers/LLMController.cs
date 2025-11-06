@@ -68,14 +68,33 @@ namespace InteractiveMapGame.Controllers
             var systemPrompt = CreateSystemPrompt(mapObject, request.ContentType);
             var userPrompt = CreateUserPrompt(mapObject, request.ContentType, request.SpecificRequest);
 
+            // Build messages array with conversation history if available
+            var messages = new List<object>
+            {
+                new { role = "system", content = systemPrompt }
+            };
+
+            // Add conversation history if provided (for conversation type)
+            if (request.ContentType.ToLower() == "conversation" && request.ConversationHistory != null && request.ConversationHistory.Count > 0)
+            {
+                // Add conversation history messages (excluding the current user message which is in specificRequest)
+                foreach (var historyMsg in request.ConversationHistory)
+                {
+                    // Only add valid roles (user or assistant)
+                    if (historyMsg.Role == "user" || historyMsg.Role == "assistant")
+                    {
+                        messages.Add(new { role = historyMsg.Role, content = historyMsg.Content });
+                    }
+                }
+            }
+
+            // Add the current user message
+            messages.Add(new { role = "user", content = userPrompt });
+
             var payload = new
             {
                 model = "gpt-3.5-turbo",
-                messages = new object[]
-                {
-                    new { role = "system", content = systemPrompt },
-                    new { role = "user", content = userPrompt }
-                },
+                messages = messages.ToArray(),
                 temperature = 0.7,
                 max_tokens = 500
             };
@@ -122,12 +141,12 @@ namespace InteractiveMapGame.Controllers
                 }
 
                 string content;
-                JsonElement root;
+                int? tokenCount = null;
                 try
                 {
                     using var stream = await resp.Content.ReadAsStreamAsync();
                     using var doc = await JsonDocument.ParseAsync(stream);
-                    root = doc.RootElement;
+                    var root = doc.RootElement;
                     
                     // Validate response structure
                     if (!root.TryGetProperty("choices", out var choices) || choices.GetArrayLength() == 0)
@@ -155,6 +174,15 @@ namespace InteractiveMapGame.Controllers
                     {
                         var errorMsg = "OpenAI API returned empty content";
                         return StatusCode(500, new { error = errorMsg, statusCode = 500 });
+                    }
+                    
+                    // Extract token count before disposing the document
+                    if (root.TryGetProperty("usage", out var usage))
+                    {
+                        if (usage.TryGetProperty("total_tokens", out var tokens))
+                        {
+                            tokenCount = tokens.GetInt32();
+                        }
                     }
                 }
                 catch (JsonException jsonEx)
@@ -191,8 +219,7 @@ namespace InteractiveMapGame.Controllers
                     UsedLLM = true,
                     LLMPrompt = truncatedPrompt,
                     LLMResponse = truncatedResponse,
-                    LLMTokens = root.TryGetProperty("usage", out var usage) ? 
-                        (usage.TryGetProperty("total_tokens", out var tokens) ? tokens.GetInt32() : null) : null,
+                    LLMTokens = tokenCount,
                     Timestamp = DateTime.UtcNow
                 };
 
@@ -471,8 +498,14 @@ namespace InteractiveMapGame.Controllers
     public record LLMRequest(
         string PlayerId,
         int MapObjectId,
-        string ContentType, // "description", "story", "facts"
-        string? SpecificRequest = null
+        string ContentType, // "description", "story", "facts", "conversation"
+        string? SpecificRequest = null,
+        List<ConversationMessage>? ConversationHistory = null
+    );
+
+    public record ConversationMessage(
+        string Role, // "user" or "assistant"
+        string Content
     );
 
     public record LLMResponse(

@@ -10,7 +10,6 @@ namespace InteractiveMapGame.Data
         }
 
         public DbSet<MapObject> MapObjects { get; set; }
-        public DbSet<PlayerProgress> PlayerProgress { get; set; }
         public DbSet<InteractionLog> InteractionLogs { get; set; }
         public DbSet<Admin> Admins { get; set; }
 
@@ -38,20 +37,6 @@ namespace InteractiveMapGame.Data
                 entity.HasIndex(e => e.Category);
                 entity.HasIndex(e => e.IsUnlocked);
                 entity.HasIndex(e => new { e.X, e.Y, e.Z });
-            });
-
-            // Configure PlayerProgress
-            modelBuilder.Entity<PlayerProgress>(entity =>
-            {
-                entity.HasKey(e => e.Id);
-                entity.Property(e => e.PlayerId).IsRequired().HasMaxLength(64);
-                entity.Property(e => e.SessionId).IsRequired().HasMaxLength(64);
-                entity.Property(e => e.UnlockedObjects).HasColumnType("nvarchar(max)");
-                entity.Property(e => e.CompletedQuests).HasColumnType("nvarchar(max)");
-                entity.Property(e => e.PlayerPreferences).HasColumnType("nvarchar(max)");
-                
-                entity.HasIndex(e => e.PlayerId);
-                entity.HasIndex(e => e.SessionId);
             });
 
             // Configure InteractionLog

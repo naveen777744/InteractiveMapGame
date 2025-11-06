@@ -22,14 +22,12 @@ namespace InteractiveMapGame.Controllers
         public async Task<ActionResult> GetStats()
         {
             var totalObjects = await _context.MapObjects.CountAsync();
-            var totalPlayers = await _context.PlayerProgress.CountAsync();
             var totalInteractions = await _context.InteractionLogs.CountAsync();
             var totalAdmins = await _context.Admins.CountAsync();
 
             return Ok(new
             {
                 totalObjects,
-                totalPlayers,
                 totalInteractions,
                 totalAdmins
             });

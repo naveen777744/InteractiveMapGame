@@ -258,84 +258,258 @@
             transform: translateX(0);
         }
 
-        .chatbot-section {
-            background: rgba(255,255,255,0.1);
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 20px;
+        /* Chatbot Popup Modal */
+        .chatbot-popup {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            z-index: 2000;
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
         }
 
-        .chatbot-section h3 {
-            margin-bottom: 15px;
-            color: #00ff88;
-            font-size: 1.1em;
+        .chatbot-popup.active {
+            visibility: visible;
+            opacity: 1;
         }
 
-        .chatbot-container {
+        .chatbot-modal {
+            width: 54%;
+            max-width: 360px;
+            height: 48%;
+            max-height: 420px;
+            background: rgba(192, 192, 192, 0.85);
+            backdrop-filter: blur(10px) saturate(180%);
+            border-radius: 15px;
             display: flex;
             flex-direction: column;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.3) inset;
+            border: 1px solid rgba(255,255,255,0.4);
+            position: absolute;
+            pointer-events: all;
+            opacity: 0;
+            transform: scale(0.9) translateY(-10px);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+        .chatbot-popup.active .chatbot-modal {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+        }
+
+        .chatbot-modal.centered {
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%) scale(0.9);
+        }
+
+        .chatbot-popup.active .chatbot-modal.centered {
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        .chatbot-arrow {
+            position: absolute;
+            width: 0;
+            height: 0;
+            border-style: solid;
+            z-index: 2001;
+            pointer-events: none;
+            opacity: 0;
+            display: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .chatbot-arrow.visible {
+            opacity: 1;
+            display: block;
+        }
+
+        .chatbot-arrow.bottom {
+            border-left: 12px solid transparent;
+            border-right: 12px solid transparent;
+            border-top: 12px solid rgba(192, 192, 192, 0.85);
+            filter: drop-shadow(0 -2px 4px rgba(0,0,0,0.2));
+        }
+
+        .chatbot-arrow.top {
+            border-left: 12px solid transparent;
+            border-right: 12px solid transparent;
+            border-bottom: 12px solid rgba(192, 192, 192, 0.85);
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+        }
+
+        .chatbot-arrow.left {
+            border-top: 12px solid transparent;
+            border-bottom: 12px solid transparent;
+            border-right: 12px solid rgba(192, 192, 192, 0.85);
+            filter: drop-shadow(-2px 0 4px rgba(0,0,0,0.2));
+        }
+
+        .chatbot-arrow.right {
+            border-top: 12px solid transparent;
+            border-bottom: 12px solid transparent;
+            border-left: 12px solid rgba(192, 192, 192, 0.85);
+            filter: drop-shadow(2px 0 4px rgba(0,0,0,0.2));
+        }
+
+        .chatbot-header {
+            padding: 20px;
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chatbot-header h3 {
+            margin: 0;
+            color: #1a1a1a;
+            font-size: 1.3em;
+        }
+
+        .chatbot-close {
+            background: rgba(0,0,0,0.1);
+            border: none;
+            color: #1a1a1a;
+            font-size: 24px;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .chatbot-close:hover {
+            background: rgba(0,0,0,0.2);
+            transform: rotate(90deg);
+        }
+
+        .chatbot-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .chatbot-messages::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .chatbot-messages::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.2);
+            border-radius: 4px;
+        }
+
+        .chatbot-messages::-webkit-scrollbar-thumb {
+            background: rgba(0,255,136,0.5);
+            border-radius: 4px;
+        }
+
+        .chatbot-messages::-webkit-scrollbar-thumb:hover {
+            background: rgba(0,255,136,0.7);
+        }
+
+        .message {
+            padding: 12px 16px;
+            border-radius: 12px;
+            max-width: 80%;
+            word-wrap: break-word;
+            line-height: 1.5;
+        }
+
+        .message.user {
+            background: rgba(0,255,136,0.3);
+            border: 1px solid rgba(0,255,136,0.5);
+            align-self: flex-end;
+            color: #1a1a1a;
+        }
+
+        .message.assistant {
+            background: rgba(255,255,255,0.6);
+            border: 1px solid rgba(255,255,255,0.8);
+            align-self: flex-start;
+            color: #1a1a1a;
+        }
+
+        .message.loading {
+            background: rgba(255,255,255,0.6);
+            border: 1px solid rgba(255,255,255,0.8);
+            align-self: flex-start;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #1a1a1a;
+        }
+
+        .message.loading::before {
+            content: '';
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(0,0,0,0.2);
+            border-top: 2px solid #00ff88;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .chatbot-input-container {
+            padding: 20px;
+            border-top: 1px solid rgba(0,0,0,0.1);
+            display: flex;
             gap: 10px;
         }
 
-        .chatbot-container label {
-            font-size: 14px;
-            color: rgba(255,255,255,0.8);
-            margin-bottom: 5px;
-        }
-
-        .chatbot-container textarea {
-            background: rgba(0,0,0,0.3);
-            border: 1px solid rgba(255,255,255,0.2);
-            border-radius: 5px;
-            padding: 10px;
-            color: white;
+        .chatbot-input {
+            flex: 1;
+            background: rgba(255,255,255,0.7);
+            border: 1px solid rgba(0,0,0,0.2);
+            border-radius: 8px;
+            padding: 12px;
+            color: #1a1a1a;
             font-family: inherit;
             font-size: 14px;
-            resize: vertical;
-            min-height: 80px;
+            resize: none;
+            min-height: 50px;
+            max-height: 120px;
             transition: border-color 0.3s ease;
         }
 
-        .chatbot-container textarea:focus {
+        .chatbot-input:focus {
             outline: none;
             border-color: #00ff88;
             box-shadow: 0 0 5px rgba(0,255,136,0.3);
         }
 
-        .chatbot-container textarea::placeholder {
-            color: rgba(255,255,255,0.5);
+        .chatbot-input::placeholder {
+            color: rgba(0,0,0,0.5);
         }
 
-        .chat-response {
-            background: rgba(0,0,0,0.3);
+        .chatbot-send {
+            background: #00ff88;
+            color: #000;
+            border: none;
             border-radius: 8px;
-            padding: 15px;
-            margin-top: 10px;
-            min-height: 60px;
-            display: none;
-            border-left: 3px solid #00ff88;
+            padding: 12px 24px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s ease;
         }
 
-        .chat-response.active {
-            display: block;
+        .chatbot-send:hover {
+            background: #00cc6a;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,255,136,0.3);
         }
 
-        .chat-response.loading {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: rgba(255,255,255,0.7);
-        }
-
-        .chat-response.loading::before {
-            content: '';
-            width: 20px;
-            height: 20px;
-            border: 2px solid rgba(255,255,255,0.3);
-            border-top: 2px solid #00ff88;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-right: 10px;
+        .chatbot-send:disabled {
+            background: rgba(0,255,136,0.5);
+            cursor: not-allowed;
+            transform: none;
         }
 
         /* WebGL canvas behind UI */
@@ -386,14 +560,8 @@
                 <div>Generating content...</div>
             </div>
 
-            <div class="chatbot-section">
-                <h3>Conversational Chatbot</h3>
-                <div class="chatbot-container">
-                    <label for="chatInput">Ask your map guide anything:</label>
-                    <textarea id="chatInput" placeholder="Type your question here..."></textarea>
-                    <button class="btn btn-primary" onclick="sendChatMessage()">Ask Map Guide</button>
-                    <div class="chat-response" id="chatResponse"></div>
-                </div>
+            <div class="toolbar">
+                <button class="btn btn-primary" id="openChatbotBtn" onclick="openChatbot()">💬 Chat with Map Guide</button>
             </div>
         </div>
     </div>
@@ -405,12 +573,33 @@
         </video>
     </div>
 
+    <!-- Chatbot Popup Modal -->
+    <div class="chatbot-popup" id="chatbotPopup">
+        <div class="chatbot-arrow" id="chatbotArrow"></div>
+        <div class="chatbot-modal">
+            <div class="chatbot-header">
+                <h3>💬 Map Guide Chat</h3>
+                <button class="chatbot-close" onclick="closeChatbot()">&times;</button>
+            </div>
+            <div class="chatbot-messages" id="chatbotMessages"></div>
+            <div class="chatbot-input-container">
+                <textarea 
+                    class="chatbot-input" 
+                    id="chatbotInput" 
+                    placeholder="Ask your map guide anything..."
+                    onkeydown="handleChatbotKeydown(event)"></textarea>
+                <button class="chatbot-send" id="chatbotSendBtn" onclick="sendChatbotMessage()">Send</button>
+            </div>
+        </div>
+    </div>
+
     <div class="notification" id="notification"></div>
 
     <script>
         let mapObjects = [];
         let selectedObject = null;
         let playerId = generatePlayerId();
+        let conversationHistory = [];
 
         // Initialize the game
         async function initGame() {
@@ -418,9 +607,18 @@
             renderMap();
         }
 
-        // Generate unique player ID
+        // Generate unique player ID (persists across page refreshes)
         function generatePlayerId() {
-            return 'player_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+            // Check if we already have a player ID stored
+            let storedId = localStorage.getItem('playerId');
+            if (storedId) {
+                return storedId;
+            }
+            
+            // Generate a new ID and store it
+            const newId = 'player_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+            localStorage.setItem('playerId', newId);
+            return newId;
         }
 
         // Load map objects from API
@@ -680,14 +878,194 @@
             videoPlayer.currentTime = 0;
         }
 
-        // Send chat message to the map guide
-        async function sendChatMessage() {
-            const chatInput = document.getElementById('chatInput');
-            const chatResponse = document.getElementById('chatResponse');
+        // Chatbot Popup Functions
+        function openChatbot() {
+            if (!selectedObject) {
+                showNotification('Please select a map object first', 'error');
+                return;
+            }
+            
+            const popup = document.getElementById('chatbotPopup');
+            const modal = popup.querySelector('.chatbot-modal');
+            
+            // Hide arrow - not used for markers or 3D objects
+            const arrow = document.getElementById('chatbotArrow');
+            arrow.style.display = 'none';
+            
+            // Show popup first so we can measure it
+            popup.classList.add('active');
+            
+            // Use double requestAnimationFrame to ensure modal is fully rendered
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    let objCenterX, objCenterY;
+                    let foundPosition = false;
+                    
+                    // First, try to find 2D DOM marker
+                    const mapCanvas = document.getElementById('mapCanvas');
+                    const objectElements = mapCanvas.querySelectorAll('.map-object');
+                    let objectElement = null;
+                    
+                    for (let elem of objectElements) {
+                        const objX = parseFloat(elem.style.left);
+                        const objY = parseFloat(elem.style.top);
+                        if (Math.abs(objX - selectedObject.x) < 1 && Math.abs(objY - selectedObject.y) < 1) {
+                            objectElement = elem;
+                            break;
+                        }
+                    }
+                    
+                    // If object element found, position popup near it
+                    if (objectElement) {
+                        const objRect = objectElement.getBoundingClientRect();
+                        objCenterX = objRect.left + objRect.width / 2;
+                        objCenterY = objRect.top + objRect.height / 2;
+                        foundPosition = true;
+                    }
+                    
+                    // If position found, position popup near it
+                    if (foundPosition) {
+                        // Get actual modal dimensions now that it's rendered
+                        const modalRect = modal.getBoundingClientRect();
+                        const modalWidth = modalRect.width || 360;
+                        const modalHeight = modalRect.height || 420;
+                        
+                        const offset = 20; // Distance from object
+                        
+                        // Determine best position (prefer bottom-right, but adjust based on viewport)
+                        let popupX, popupY;
+                        
+                        const viewportWidth = window.innerWidth;
+                        const viewportHeight = window.innerHeight;
+                        
+                        // Check if object is on left or right side
+                        const isLeftSide = objCenterX < viewportWidth / 2;
+                        const isTopSide = objCenterY < viewportHeight / 2;
+                        
+                        if (isLeftSide) {
+                            // Position to the right of object
+                            popupX = objCenterX + offset;
+                        } else {
+                            // Position to the left of object
+                            popupX = objCenterX - offset - modalWidth;
+                        }
+                        
+                        if (isTopSide) {
+                            // Position below object
+                            popupY = objCenterY + offset;
+                        } else {
+                            // Position above object
+                            popupY = objCenterY - offset - modalHeight;
+                        }
+                        
+                        // Ensure popup stays within viewport
+                        popupX = Math.max(10, Math.min(popupX, viewportWidth - modalWidth - 10));
+                        popupY = Math.max(10, Math.min(popupY, viewportHeight - modalHeight - 10));
+                        
+                        // Apply positions
+                        modal.classList.remove('centered');
+                        modal.style.left = popupX + 'px';
+                        modal.style.top = popupY + 'px';
+                    } else {
+                        // Fallback: center the popup if object element not found (3D objects)
+                        modal.classList.add('centered');
+                        modal.style.left = '50%';
+                        modal.style.top = '50%';
+                    }
+                });
+            });
+            
+            // Load conversation history from localStorage
+            loadConversationHistory();
+            
+            // Focus on input
+            setTimeout(() => {
+                document.getElementById('chatbotInput').focus();
+            }, 100);
+        }
+
+        function closeChatbot() {
+            const popup = document.getElementById('chatbotPopup');
+            const modal = popup.querySelector('.chatbot-modal');
+            
+            // Trigger fade out
+            popup.classList.remove('active');
+            
+            // Wait for transition to complete before resetting styles
+            setTimeout(() => {
+                if (!popup.classList.contains('active')) {
+                    modal.style.left = '';
+                    modal.style.top = '';
+                    modal.classList.remove('centered');
+                }
+            }, 300); // Match the transition duration (0.3s)
+        }
+
+        function loadConversationHistory() {
+            const historyKey = `chatbot_history_${playerId}_${selectedObject.id}`;
+            const stored = localStorage.getItem(historyKey);
+            if (stored) {
+                try {
+                    conversationHistory = JSON.parse(stored);
+                } catch (e) {
+                    console.error('Error loading conversation history:', e);
+                    conversationHistory = [];
+                }
+            } else {
+                conversationHistory = [];
+            }
+            
+            renderConversationHistory();
+        }
+
+        function saveConversationHistory() {
+            if (!selectedObject) return;
+            const historyKey = `chatbot_history_${playerId}_${selectedObject.id}`;
+            localStorage.setItem(historyKey, JSON.stringify(conversationHistory));
+        }
+
+        function renderConversationHistory() {
+            const messagesContainer = document.getElementById('chatbotMessages');
+            messagesContainer.innerHTML = '';
+            
+            if (conversationHistory.length === 0) {
+                const welcomeMsg = document.createElement('div');
+                welcomeMsg.className = 'message assistant';
+                welcomeMsg.textContent = `Hello! I'm your map guide for ${selectedObject.name}. Ask me anything about this object!`;
+                messagesContainer.appendChild(welcomeMsg);
+            } else {
+                conversationHistory.forEach(msg => {
+                    const messageDiv = document.createElement('div');
+                    messageDiv.className = `message ${msg.role}`;
+                    messageDiv.textContent = msg.content;
+                    messagesContainer.appendChild(messageDiv);
+                });
+            }
+            
+            // Scroll to bottom
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function addMessageToHistory(role, content) {
+            conversationHistory.push({ role, content });
+            saveConversationHistory();
+            renderConversationHistory();
+        }
+
+        function handleChatbotKeydown(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendChatbotMessage();
+            }
+        }
+
+        async function sendChatbotMessage() {
+            const chatInput = document.getElementById('chatbotInput');
+            const sendBtn = document.getElementById('chatbotSendBtn');
+            const messagesContainer = document.getElementById('chatbotMessages');
             const message = chatInput.value.trim();
 
             if (!message) {
-                showNotification('Please enter a message', 'error');
                 return;
             }
 
@@ -696,11 +1074,29 @@
                 return;
             }
 
-            // Show loading state
-            chatResponse.className = 'chat-response loading';
-            chatResponse.textContent = 'Map guide is thinking...';
+            // Disable input and button
+            chatInput.disabled = true;
+            sendBtn.disabled = true;
+
+            // Add user message to history and UI
+            addMessageToHistory('user', message);
+            chatInput.value = '';
+
+            // Show loading message
+            const loadingMsg = document.createElement('div');
+            loadingMsg.className = 'message loading';
+            loadingMsg.textContent = 'Map guide is thinking...';
+            messagesContainer.appendChild(loadingMsg);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
             try {
+                // Prepare conversation history for API (last 10 messages, excluding the current message we just added)
+                // We exclude the last message since it's the current one being sent
+                const historyForApi = conversationHistory.slice(0, -1).slice(-10).map(msg => ({
+                    role: msg.role === 'user' ? 'user' : 'assistant',
+                    content: msg.content
+                }));
+
                 const response = await fetch('/api/LLM/generate-content', {
                     method: 'POST',
                     headers: {
@@ -710,31 +1106,63 @@
                         playerId: playerId,
                         mapObjectId: selectedObject.id,
                         contentType: 'conversation',
-                        specificRequest: message
+                        specificRequest: message,
+                        conversationHistory: historyForApi
                     })
                 });
 
+                // Remove loading message
+                loadingMsg.remove();
+
                 if (!response.ok) {
-                    throw new Error('Failed to get response from map guide');
+                    const errorText = await response.text();
+                    console.error('API error response:', response.status, errorText);
+                    throw new Error(`Failed to get response from map guide: ${response.status}`);
                 }
 
                 const data = await response.json();
+                console.log('Chatbot response data:', data);
                 
-                // Display the response
-                chatResponse.className = 'chat-response active';
-                chatResponse.textContent = data.content;
+                // Handle both camelCase and PascalCase property names
+                const content = data.content || data.Content;
                 
-                // Clear the input
-                chatInput.value = '';
+                if (!content) {
+                    console.error('No content in response:', data);
+                    throw new Error('Response missing content field');
+                }
                 
-                showNotification('Map guide responded!', 'success');
+                // Add assistant response to history and UI
+                addMessageToHistory('assistant', content);
+                
             } catch (error) {
                 console.error('Error sending chat message:', error);
-                chatResponse.className = 'chat-response active';
-                chatResponse.textContent = 'Sorry, I encountered an error. Please try again.';
+                
+                // Remove loading message
+                loadingMsg.remove();
+                
+                // Add error message
+                const errorMsg = document.createElement('div');
+                errorMsg.className = 'message assistant';
+                errorMsg.textContent = 'Sorry, I encountered an error. Please try again.';
+                messagesContainer.appendChild(errorMsg);
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                
                 showNotification('Error communicating with map guide', 'error');
+            } finally {
+                // Re-enable input and button
+                chatInput.disabled = false;
+                sendBtn.disabled = false;
+                chatInput.focus();
             }
         }
+
+        // Close chatbot when clicking outside
+        document.getElementById('chatbotPopup')?.addEventListener('click', (e) => {
+            const modal = e.currentTarget.querySelector('.chatbot-modal');
+            if (e.target === e.currentTarget || (!modal.contains(e.target) && e.target.id !== 'chatbotArrow')) {
+                closeChatbot();
+            }
+        });
 
         // Initialize the game when page loads
         document.addEventListener('DOMContentLoaded', initGame);
@@ -980,3 +1408,4 @@
     </script>
 </body>
 </html>
+

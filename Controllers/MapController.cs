@@ -489,29 +489,6 @@ namespace InteractiveMapGame.Controllers
 
             _context.MapObjects.AddRange(mapObjects);
 
-            // Create sample player progress
-            var playerProgress = new PlayerProgress
-            {
-                PlayerId = "player_demo_001",
-                SessionId = "session_demo_001",
-                DiscoveredObjects = 3,
-                TotalExperience = 150,
-                CurrentLevel = 2,
-                LastX = 200,
-                LastY = 150,
-                LastZ = 0,
-                UnlockedObjects = "[1,5,9]",
-                CompletedQuests = "[]",
-                PlayerPreferences = "{\"theme\":\"dark\",\"sound\":true}",
-                TotalInteractions = 12,
-                VideosWatched = 2,
-                TimeSpent = 1800,
-                CreatedAt = DateTime.UtcNow,
-                LastActive = DateTime.UtcNow
-            };
-
-            _context.PlayerProgress.Add(playerProgress);
-
             // Create sample interaction logs
             var interactionLogs = new List<InteractionLog>
             {
@@ -561,13 +538,11 @@ namespace InteractiveMapGame.Controllers
             await _context.SaveChangesAsync();
 
             var totalObjects = await _context.MapObjects.CountAsync();
-            var totalProgress = await _context.PlayerProgress.CountAsync();
             var totalLogs = await _context.InteractionLogs.CountAsync();
 
             return Ok(new { 
                 message = "Database seeded successfully!",
                 totalObjects,
-                totalProgress,
                 totalLogs
             });
         }
